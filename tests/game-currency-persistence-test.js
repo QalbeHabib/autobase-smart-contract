@@ -7,8 +7,8 @@
 
 const Corestore = require("corestore");
 const Autobase = require("autobase");
-const { createIdentity } = require("./src/identity");
-const { createSmartContractSystem } = require("./src/contracts");
+const { createIdentity } = require("../src/identity");
+const { createSmartContractSystem } = require("../src/contracts");
 
 // Test identities and data
 const testIdentities = {};
@@ -66,7 +66,7 @@ async function simulateFirstRun() {
   );
 
   // Create a fresh store
-  const store = new Corestore("./test-game-currency-data");
+  const store = new Corestore("./tests/test-data/currency/game-currency");
   await store.ready();
   console.log("✅ Corestore created and ready");
 
@@ -156,7 +156,7 @@ async function simulateRestart() {
   console.log("Recreating smart contract system and checking persistent data");
 
   // Reopen the store
-  const store = new Corestore("./test-game-currency-data");
+  const store = new Corestore("./tests/test-data/currency/game-currency");
   await store.ready();
   console.log("✅ Corestore reopened");
 

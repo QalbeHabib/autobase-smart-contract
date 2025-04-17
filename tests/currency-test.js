@@ -2,14 +2,14 @@
 
 const Corestore = require("corestore");
 const Autobase = require("autobase");
-const { createCurrencySystem } = require("./src/currency");
-const { createIdentity } = require("./src/identity");
+const { createCurrencySystem } = require("../src/currency");
+const { createIdentity } = require("../src/identity");
 
 async function runCurrencyTest() {
   console.log("Starting currency persistence test...");
 
   // Setup Corestore
-  const store = new Corestore("./currency-test-data");
+  const store = new Corestore("./tests/test-data/currency");
   await store.ready();
   console.log("Corestore ready");
 
@@ -126,7 +126,7 @@ async function runCurrencyTest() {
   console.log("\n-- Simulating restart: Closing and reopening Autobase --");
 
   // Reopen everything
-  const newStore = new Corestore("./currency-test-data");
+  const newStore = new Corestore("./tests/test-data/currency");
   await newStore.ready();
   console.log("Corestore reopened");
 

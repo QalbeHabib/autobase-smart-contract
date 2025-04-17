@@ -4,12 +4,12 @@
 
 const Corestore = require("corestore");
 const Autobase = require("autobase");
-const identity = require("./src/identity");
+const identity = require("../src/identity");
 const b4a = require("b4a");
 
 async function main() {
   // Setup corestore and autobase
-  const store = new Corestore("./autobase-test-data");
+  const store = new Corestore("./tests/test-data/autobase");
   await store.ready();
   console.log("Corestore ready");
 

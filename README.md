@@ -41,6 +41,7 @@ The permissions module (`src/permissions/index.js`) implements role-based access
 - Predefined roles (MEMBER, MODERATOR, ADMIN)
 - Per-room and per-channel permissions
 - Permission verification for operations
+- Integration with Autobase for persistence
 
 ### Currency Module
 
@@ -50,6 +51,7 @@ The currency module (`src/currency/index.js`) implements a simple token system w
 - Balance tracking
 - Transaction history
 - Persistence across restarts using Autobase
+- Deduplication of operations to prevent double-spending
 
 ### Smart Contract System
 
@@ -58,6 +60,7 @@ The contracts module (`src/contracts/index.js`) ties everything together to prov
 - Creates an Autobase instance to store operations
 - Manages the state for all subsystems (identity, permissions, currency)
 - Provides methods for interacting with each subsystem
+- Ensures proper initialization and operation handling
 
 ## Running the System
 
@@ -110,16 +113,19 @@ These tests verify the core functionality and integration with Autobase:
 
 ```bash
 # Run the basic identity test
-node test-identity.js
+node tests/test-identity.js
 
 # Run the simple integration test
-node autobase-test.js
+node tests/autobase-test.js
 
 # Run the persistence test for identity
-node persistence-test.js
+node tests/persistence-test.js
 
 # Run the currency system test
-node currency-test.js
+node tests/currency-test.js
+
+# Run the game currency persistence test
+node tests/game-currency-persistence-test.js
 ```
 
 ### Test Descriptions
@@ -131,6 +137,8 @@ node currency-test.js
 3. **Persistence Test** (`persistence-test.js`): Tests that device registrations are properly stored in Autobase and can be reconstructed after restarting the application.
 
 4. **Currency Test** (`currency-test.js`): Tests the currency system's ability to mint, transfer, and burn tokens, and verifies that balances persist across application restarts.
+
+5. **Game Currency Persistence Test** (`game-currency-persistence-test.js`): Tests the integration between the smart contract system, currency module, and resource management in a game environment.
 
 ## API Reference
 
@@ -168,6 +176,9 @@ const devices = registry.getDevicesForIdentity(masterPublicKey);
 ```javascript
 // Create a permission system
 const permissionSystem = createPermissionSystem(autobase);
+
+// Set the Autobase instance
+permissionSystem.setAutobase(autobase);
 
 // Create a room
 const room = permissionSystem.createRoom("General", adminIdentity);
@@ -209,6 +220,11 @@ const balance = currencySystem.balanceOf(userPublicKey);
 
 // Get transaction history
 const transactions = currencySystem.getTransactions();
+
+// Create and manage resources
+const resourceSystem = createResourceSystem(autobase);
+resourceSystem.createResource("wood", "Crafting material", 1000, adminIdentity);
+resourceSystem.mintResource("wood", userPublicKey, 50, adminIdentity);
 ```
 
 ### Smart Contract System
@@ -218,6 +234,9 @@ const transactions = currencySystem.getTransactions();
 const system = await createSmartContractSystem(store, {
   localIdentity: identity,
 });
+
+// Initialize all subsystems
+await system.initializeAllSubsystems();
 
 // Add a writer
 await system.addWriter(otherPublicKey);
@@ -229,6 +248,10 @@ await system.setPermission(channelId, userPublicKey, "ADMIN");
 await system.mintCurrency("coin", userPublicKey, 100);
 await system.transferCurrency("coin", fromPublicKey, toPublicKey, 50);
 const balance = system.getCurrencyBalance("coin", userPublicKey);
+
+// Resource operations
+await system.addResource(userPublicKey, "wood", 20);
+const woodAmount = system.getResourceQuantity(userPublicKey, "wood");
 ```
 
 ## Architecture
@@ -250,40 +273,21 @@ These operations are applied to the in-memory state and can be replayed when the
 
 ## Version Management
 
-This project follows [Semantic Versioning](https://semver.org/) for all components. Each module is versioned independently while maintaining compatibility with the overall system version.
-
-### Status Indicators
-
-Throughout the version documentation, you'll find the following status indicators:
-
-- ✅ **Completed/Stable**: Feature is implemented and tested
-- 🔄 **In Progress**: Feature is currently being developed
-- ⏳ **Planned**: Feature is scheduled for future implementation
-- ⚠️ **Beta/Known Issue**: Feature works but may have limitations or known issues
-
-### Version Tracking
-
-The codebase includes a comprehensive version tracking system:
-
-1. **VERSIONS.md**: Contains detailed version history, module-specific versioning, implementation details, and planned features with their current status.
-
-2. **VERSION_CATALOG.js**: Programmatic representation of version data that can be imported into other modules. Includes utility functions for version comparisons and compatibility checks.
-
-3. **show-versions.js**: Command-line tool for displaying version information.
-
-### Checking Version Information
-
-To view detailed version information, use these npm scripts:
+The project follows [Semantic Versioning](https://semver.org/) (SemVer) guidelines. Each module is tracked independently while maintaining overall system compatibility. For detailed version information, see the `VERSIONS.md` file or run:
 
 ```bash
-# Show overall system version with all modules
-npm run version
-
-# Show information for a specific module
-npm run version:module currency  # (replace 'currency' with any module name)
+npm run version          # Display overall system version information
+npm run version:module currency  # Display information for a specific module
 ```
 
-For more detailed information about versions, implementation status, and planned features, please refer to the [VERSIONS.md](./VERSIONS.md) file.
+Status indicators are used throughout the documentation to show the completion status of features:
+
+- ✅ Completed features
+- 🔄 In-progress features
+- ⏳ Planned features
+- ⚠️ Features with known issues
+
+The version tracking system utilizes `VERSION_CATALOG.js` to maintain a record of all modules, releases, and planned features.
 
 ## License
 

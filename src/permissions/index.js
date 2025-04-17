@@ -45,6 +45,9 @@ function createPermissionSystem(autobase) {
   const roles = new Map();
   const channels = new Map();
 
+  // Store the autobase instance
+  let _autobase = autobase;
+
   // Operation types for the Autobase
   const OP_TYPES = {
     CREATE_ROOM: "CREATE_ROOM",
@@ -248,119 +251,116 @@ function createPermissionSystem(autobase) {
     }
   }
 
-  // Function to create a room
+  /**
+   * Update the autobase instance used by the permission system
+   * @param {Object} autobase - The new autobase instance to use
+   */
+  function setAutobase(newAutobase) {
+    _autobase = newAutobase;
+    console.log("Permission system: Updated autobase instance");
+    return true;
+  }
+
+  /**
+   * Function to create a room
+   * @param {string} name - The name of the room
+   * @param {string} creator - The ID of the creator
+   * @returns {Object} The room object
+   */
   function createRoom(name, creator) {
-    const roomId = `room_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 9)}`;
+    const roomId = `room_${Date.now()}`;
+    createRoomInternal(roomId, name, creator);
 
-    // Add the operation to the autobase
-    // In a real implementation, this would use autobase.append()
-    const operation = {
-      type: OP_TYPES.CREATE_ROOM,
-      roomId,
-      name,
-      creatorId: creator.publicIdentity.publicKey.toString("hex"),
-    };
-
-    // Apply the operation
-    apply([operation]);
-
+    // Return a room object with methods to manage the room
     return {
       id: roomId,
       name,
+      creator,
 
-      // Add a member to the room
+      /**
+       * Add a member to the room
+       * @param {string} user - The user ID to add
+       * @param {Object} options - Options for the member
+       * @returns {boolean} True if the member was added
+       */
       addMember(user, options = {}) {
         const role = options.role || `${roomId}:MEMBER`;
+        const inviter = options.inviter || creator;
 
-        const operation = {
-          type: OP_TYPES.ADD_MEMBER,
-          roomId,
-          memberId: user.publicIdentity.publicKey.toString("hex"),
-          role,
-          inviterId: creator.publicIdentity.publicKey.toString("hex"),
-        };
-
-        apply([operation]);
+        addMemberInternal(roomId, user, role, inviter);
+        return true;
       },
 
-      // Update a member's role
+      /**
+       * Update a member's role
+       * @param {string} user - The user ID to update
+       * @param {string} newRole - The new role for the user
+       * @returns {boolean} True if the role was updated
+       */
       updateMemberRole(user, newRole) {
-        const operation = {
-          type: OP_TYPES.UPDATE_MEMBER_ROLE,
-          roomId,
-          memberId: user.publicIdentity.publicKey.toString("hex"),
-          role: `${roomId}:${newRole}`,
-          updaterId: creator.publicIdentity.publicKey.toString("hex"),
-        };
-
-        apply([operation]);
+        updateMemberRoleInternal(roomId, user, `${roomId}:${newRole}`, creator);
+        return true;
       },
 
-      // Create a channel
+      /**
+       * Create a new channel in the room
+       * @param {string} name - The name of the channel
+       * @returns {Object} The channel object
+       */
       createChannel(name) {
-        const channelId = `${roomId}:channel_${Date.now()}_${Math.random()
-          .toString(36)
-          .substring(2, 9)}`;
-
-        const operation = {
-          type: OP_TYPES.CREATE_CHANNEL,
-          roomId,
-          channelId,
-          name,
-          creatorId: creator.publicIdentity.publicKey.toString("hex"),
-        };
-
-        apply([operation]);
+        const channelId = `${roomId}:channel_${Date.now()}`;
+        createChannelInternal(roomId, channelId, name, creator);
 
         return {
           id: channelId,
           name,
+          roomId,
+          creator,
         };
       },
 
-      // Get all channels
+      /**
+       * Get all channels in the room
+       * @returns {Array} The channels in the room
+       */
       getChannels() {
-        return Array.from(channels.values()).filter(
-          (channel) => channel.roomId === roomId
-        );
+        return Array.from(channels.values()).filter((c) => c.roomId === roomId);
       },
 
-      // Get all members
+      /**
+       * Get all members in the room
+       * @returns {Array} The members in the room
+       */
       getMembers() {
-        return Array.from(members.values())
-          .filter((member) => member.roomId === roomId)
-          .map((member) => {
-            const role = roles.get(member.role);
-            return {
-              userId: member.userId,
-              role: role.name,
-              joinedAt: member.joinedAt,
-            };
-          });
+        return Array.from(members.values()).filter((m) => m.roomId === roomId);
       },
     };
   }
 
+  // Return the permission system interface
   return {
+    rooms,
+    members,
+    roles,
+    channels,
     createRoom,
     apply,
+    setAutobase,
   };
 }
 
 /**
- * Creates a room with permissions
+ * Create a room outside the permission system
  * @param {string} name - The name of the room
- * @param {Object} creator - The creator's identity
+ * @param {string} creator - The ID of the creator
  * @returns {Object} The room object
  */
 function createRoom(name, creator) {
-  // In a real implementation, this would use the autobase
-  const permissionSystem = createPermissionSystem({});
+  const permissionSystem = createPermissionSystem();
   return permissionSystem.createRoom(name, creator);
 }
 
+// Export the permission system
 module.exports = {
   createPermissionSystem,
   createRoom,

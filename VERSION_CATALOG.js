@@ -8,7 +8,7 @@
 /**
  * Current version of the entire system
  */
-const SYSTEM_VERSION = "1.0.0";
+const SYSTEM_VERSION = "1.0.1";
 
 /**
  * Version information for each module
@@ -16,123 +16,139 @@ const SYSTEM_VERSION = "1.0.0";
 const MODULE_VERSIONS = {
   identity: {
     current: "1.0.0",
+    compatibility: {
+      minAutobaseVersion: "7.5.0",
+    },
     history: [
       {
         version: "1.0.0",
-        date: "2024-05-01",
-        description:
-          "Initial implementation with seed-based identity generation and device management",
+        date: "2024-05-16",
+        description: "Initial stable release",
         completed: true,
       },
       {
         version: "0.9.0",
-        date: "2024-04-15",
-        description: "Beta implementation with basic device registration",
+        date: "2024-05-13",
+        description: "Beta implementation with device registration",
         completed: true,
       },
       {
         version: "0.5.0",
-        date: "2024-03-10",
-        description: "Proof of concept with key derivation",
+        date: "2024-05-11",
+        description: "Proof of concept",
         completed: true,
       },
     ],
+  },
+  permissions: {
+    current: "1.0.1",
     compatibility: {
       minAutobaseVersion: "7.5.0",
     },
-  },
-  permissions: {
-    current: "1.0.0",
     history: [
       {
+        version: "1.0.1",
+        date: "2024-05-16",
+        description: "Added missing setAutobase method",
+        completed: true,
+      },
+      {
         version: "1.0.0",
-        date: "2024-05-01",
-        description: "Initial implementation with role-based access control",
+        date: "2024-05-14",
+        description: "Initial stable release",
         completed: true,
       },
       {
         version: "0.8.0",
-        date: "2024-04-10",
-        description: "Beta implementation with basic permission checks",
+        date: "2024-05-12",
+        description: "Beta implementation",
         completed: true,
       },
     ],
+  },
+  currency: {
+    current: "1.0.1",
     compatibility: {
       minAutobaseVersion: "7.5.0",
     },
-  },
-  currency: {
-    current: "1.0.0",
     history: [
       {
+        version: "1.0.1",
+        date: "2024-05-16",
+        description: "Fixed missing apply function in resource management",
+        completed: true,
+      },
+      {
         version: "1.0.0",
-        date: "2024-05-01",
-        description: "Initial implementation with full token functionality",
+        date: "2024-05-14",
+        description: "Initial stable release",
         completed: true,
       },
       {
         version: "0.9.5",
-        date: "2024-04-25",
-        description: "Fixed duplication of operations during initialization",
+        date: "2024-05-13",
+        description: "Fixed duplication issues",
         completed: true,
       },
       {
         version: "0.9.0",
-        date: "2024-04-20",
-        description: "Beta implementation with basic token operations",
+        date: "2024-05-11",
+        description: "Beta implementation",
         completed: true,
       },
       {
         version: "0.8.0",
-        date: "2024-04-10",
-        description: "Initial prototype with in-memory balances",
+        date: "2024-05-09",
+        description: "Initial prototype",
         completed: true,
       },
     ],
-    compatibility: {
-      minAutobaseVersion: "7.5.0",
-    },
   },
   web3: {
     current: "1.0.0",
+    compatibility: {
+      minAutobaseVersion: "7.5.0",
+    },
     history: [
       {
         version: "1.0.0",
-        date: "2024-05-01",
-        description: "Initial implementation with token verification",
+        date: "2024-05-16",
+        description: "Initial stable release",
         completed: true,
       },
       {
         version: "0.7.0",
-        date: "2024-04-05",
-        description: "Prototype with simulated blockchain interaction",
+        date: "2024-05-13",
+        description: "Prototype implementation",
         completed: true,
       },
     ],
+  },
+  contracts: {
+    current: "1.0.1",
     compatibility: {
       minAutobaseVersion: "7.5.0",
     },
-  },
-  contracts: {
-    current: "1.0.0",
     history: [
       {
+        version: "1.0.1",
+        date: "2024-05-16",
+        description: "Fixed variable declaration issues",
+        completed: true,
+      },
+      {
         version: "1.0.0",
-        date: "2024-05-01",
-        description:
-          "Initial implementation with full integration of all modules",
+        date: "2024-05-14",
+        description: "Initial stable release",
         completed: true,
       },
       {
         version: "0.9.0",
-        date: "2024-04-15",
-        description: "Beta implementation with basic operation handling",
+        date: "2024-05-12",
+        description: "Beta implementation",
         completed: true,
       },
     ],
-    compatibility: {
-      minAutobaseVersion: "7.5.0",
-    },
   },
 };
 
@@ -140,22 +156,93 @@ const MODULE_VERSIONS = {
  * Implementation details for each version
  */
 const IMPLEMENTATION_DETAILS = {
+  "1.0.1": {
+    releaseDate: "2024-05-16",
+    description:
+      "Bug fix release addressing compatibility issues across modules",
+    keyFeatures: [
+      {
+        text: "Identity Management",
+        description: "Seed-based identities with device registration",
+        completed: true,
+      },
+      {
+        text: "Permissions System",
+        description: "Role-based access control",
+        completed: true,
+      },
+      {
+        text: "Currency",
+        description: "Token system with transaction persistence",
+        completed: true,
+      },
+      {
+        text: "Web3 Integration",
+        description: "Blockchain connectivity",
+        completed: true,
+      },
+      {
+        text: "Smart Contracts",
+        description: "Operation-based contract system",
+        completed: true,
+      },
+    ],
+    improvements: [
+      {
+        text: "Added missing setAutobase method to the permissions module",
+        completed: true,
+      },
+      {
+        text: "Fixed resource system's apply function handling in the currency module",
+        completed: true,
+      },
+      {
+        text: "Resolved variable declaration issues in the contracts module",
+        completed: true,
+      },
+      {
+        text: "Enhanced module initialization and cross-module communication",
+        completed: true,
+      },
+    ],
+    knownIssues: [
+      {
+        text: "Web3 module requires further testing with live blockchain integration",
+        resolved: false,
+      },
+      {
+        text: "Performance optimizations needed for large operation sets",
+        resolved: false,
+      },
+    ],
+  },
   "1.0.0": {
-    releaseDate: "2024-05-01",
+    releaseDate: "2024-05-14",
     description: "Initial stable release of the Autobase Smart Contract System",
     keyFeatures: [
       {
-        text: "Seed-based identity generation with multi-device support",
+        text: "Identity Management",
+        description: "Seed-based identities with device registration",
         completed: true,
       },
-      { text: "Role-based access control system", completed: true },
       {
-        text: "Token and resource management with persistence",
+        text: "Permissions System",
+        description: "Role-based access control",
         completed: true,
       },
-      { text: "Web3 integration for token-gated access", completed: true },
       {
-        text: "Full Autobase integration for distributed operations",
+        text: "Currency",
+        description: "Token system with transaction persistence",
+        completed: true,
+      },
+      {
+        text: "Web3 Integration",
+        description: "Blockchain connectivity",
+        completed: true,
+      },
+      {
+        text: "Smart Contracts",
+        description: "Operation-based contract system",
         completed: true,
       },
     ],
@@ -172,7 +259,10 @@ const IMPLEMENTATION_DETAILS = {
         text: "Improved error handling throughout all modules",
         completed: true,
       },
-      { text: "Enhanced compatibility with Autobase v7.5.0", completed: true },
+      {
+        text: "Enhanced compatibility with Autobase v7.5.0",
+        completed: true,
+      },
     ],
     knownIssues: [
       {
@@ -222,7 +312,7 @@ const PLANNED_FEATURES = {
       name: "Enhanced Resources",
       module: "currency",
       description: "Advanced resource management with crafting",
-      status: "planned",
+      status: "in-progress",
       completed: false,
     },
     {
@@ -236,25 +326,18 @@ const PLANNED_FEATURES = {
       name: "Performance Optimization",
       module: "core",
       description: "Improved handling of large operation sets",
-      status: "in-progress",
+      status: "planned",
       completed: false,
     },
     {
       name: "Encrypted Messaging",
       module: "communications",
       description: "Add support for encrypted P2P messaging",
-      status: "planned",
+      status: "in-progress",
       completed: false,
     },
   ],
   "2.0.0": [
-    {
-      name: "Custom Smart Contracts",
-      module: "contracts",
-      description: "User-defined smart contract functionality",
-      status: "planned",
-      completed: false,
-    },
     {
       name: "Governance System",
       module: "dao",
@@ -266,6 +349,20 @@ const PLANNED_FEATURES = {
       name: "Cross-Chain Bridge",
       module: "web3",
       description: "Enhanced interoperability with multiple blockchains",
+      status: "planned",
+      completed: false,
+    },
+    {
+      name: "Advanced Contracts",
+      module: "contracts",
+      description: "Complex contract templates and state machines",
+      status: "planned",
+      completed: false,
+    },
+    {
+      name: "Scalability Improvements",
+      module: "core",
+      description: "Improvements for high-volume applications",
       status: "planned",
       completed: false,
     },

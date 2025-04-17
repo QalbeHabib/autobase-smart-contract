@@ -1,6 +1,6 @@
 {
   "name": "autobase-smart-contracts",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Smart contract-like functionality using Autobase",
   "main": "index.js",
   "scripts": {

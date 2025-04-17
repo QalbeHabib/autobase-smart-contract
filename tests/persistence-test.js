@@ -7,7 +7,7 @@
 
 const Corestore = require("corestore");
 const Autobase = require("autobase");
-const identity = require("./src/identity");
+const identity = require("../src/identity");
 const b4a = require("b4a");
 
 // Global registry for tracking identities created in this test
@@ -18,7 +18,7 @@ async function simulateFirstRun() {
   console.log("Creating fresh autobase instance and registering devices\n");
 
   // Create the storage
-  const store = new Corestore("./persistence-data");
+  const store = new Corestore("./tests/test-data/persistence");
   await store.ready();
 
   // Create Autobase instance
@@ -145,7 +145,7 @@ async function simulateRestart() {
   console.log("Recreating autobase instance and checking persistent data\n");
 
   // Create the storage again
-  const store = new Corestore("./persistence-data");
+  const store = new Corestore("./tests/test-data/persistence");
   await store.ready();
   console.log("Reopened corestore");
 

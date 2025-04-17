@@ -97,6 +97,25 @@ function displayVersionInfo() {
         `  ${statusIndicator} ${feature.name} (${feature.module}): ${feature.description}`
       );
     });
+
+    // Also show v2.0.0 planned features
+    console.log(`\nPlanned for v2.0.0:`);
+    const v2Features = versionCatalog.getPlannedFeatures("2.0.0");
+    v2Features.forEach((feature) => {
+      // Display status indicator based on feature status
+      let statusIndicator;
+      if (feature.completed) {
+        statusIndicator = "✅ [COMPLETED]";
+      } else if (feature.status === "in-progress") {
+        statusIndicator = "🔄 [IN PROGRESS]";
+      } else {
+        statusIndicator = "⏳ [PLANNED]";
+      }
+
+      console.log(
+        `  ${statusIndicator} ${feature.name} (${feature.module}): ${feature.description}`
+      );
+    });
   } catch (error) {
     console.log("  No upcoming features defined");
   }

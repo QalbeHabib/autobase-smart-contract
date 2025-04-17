@@ -33,11 +33,14 @@ async function createSmartContractSystem(storage, options = {}) {
   // Ensure storage is ready
   await storage.ready();
 
+  // Initialize variables that will be set later
+  let identityRegistry = null;
+  let currencySystem = null;
+  let resourceSystem = null;
+  let web3Bridge = null;
+
   // Set up our application systems
   const permissionSystem = permissionsModule.createPermissionSystem();
-  const currencySystem = currencyModule.createCurrencySystem();
-  const resourceSystem = currencyModule.createResourceSystem();
-  const web3Bridge = new web3Module.Web3Bridge();
 
   // Initialize state
   const state = {
@@ -166,6 +169,7 @@ async function createSmartContractSystem(storage, options = {}) {
   await autobase.ready();
 
   // Initialize the various subsystems with the autobase instance
+  permissionSystem.setAutobase(autobase);
   identityRegistry = identityModule.createIdentityRegistry(autobase);
   currencySystem = currencyModule.createCurrencySystem(autobase);
   resourceSystem = currencyModule.createResourceSystem(autobase);

@@ -5,6 +5,7 @@ yarn-debug.log
 yarn-error.log
 
 # Hypercore/Corestore/Autobase data directories
+tests/test-data/
 **/data/
 *-storage/
 **/autobase-test-data/
@@ -43,4 +44,10 @@ logs
 
 # Build outputs
 dist/
-build/ 
+build/
+
+# Version management files
+# These are ignored to allow developers to have different local versions
+VERSIONS.md
+VERSION_CATALOG.js
+show-versions.js 

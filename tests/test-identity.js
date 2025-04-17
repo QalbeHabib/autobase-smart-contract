@@ -4,14 +4,14 @@
 
 const Corestore = require("corestore");
 const Autobase = require("autobase");
-const identity = require("./src/identity");
+const identity = require("../src/identity");
 
 async function runTest() {
   console.log("Starting Identity Registry Test");
   console.log("===============================\n");
 
   // Create the storage
-  const store = new Corestore("./test-data");
+  const store = new Corestore("./tests/test-data/identity");
   await store.ready();
   console.log("Corestore is ready");
 

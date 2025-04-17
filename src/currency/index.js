@@ -616,17 +616,25 @@ function createCurrencySystem(autobase, options = {}) {
 }
 
 /**
- * Creates a resource system for an Autobase
+ * Creates a resource system with operations
  * @param {Object} autobase - The autobase instance
- * @param {Object} options - Configuration options
+ * @param {Object} options - Options for the resource system
  * @returns {Object} The resource system
  */
 function createResourceSystem(autobase, options = {}) {
-  // Similar to currency system, but with additional features for resource management
-  // This is a simplified version that could be expanded upon
-
-  // Define the resources
+  // Storage for resources
   const resources = new Map();
+  const holdings = new Map();
+  const operations = [];
+  const processedOperations = new Set();
+
+  // Operation types for the resource system
+  const OP_TYPES = {
+    CREATE_RESOURCE: "CREATE_RESOURCE",
+    MINT_RESOURCE: "MINT_RESOURCE",
+    TRANSFER_RESOURCE: "TRANSFER_RESOURCE",
+    CONSUME_RESOURCE: "CONSUME_RESOURCE",
+  };
 
   // Initialize resources from options
   if (options.resources) {
@@ -643,23 +651,8 @@ function createResourceSystem(autobase, options = {}) {
     }
   }
 
-  // A map of who owns which resources
-  // Map<userAddress, Map<resourceId, amount>>
-  const holdings = new Map();
-
-  // Resource operations
-  const operations = [];
-
   // Flag to track if the system is initialized from Autobase
   let isInitialized = false;
-
-  // Operation types
-  const OP_TYPES = {
-    CREATE_RESOURCE: "CREATE_RESOURCE",
-    MINT_RESOURCE: "MINT_RESOURCE",
-    TRANSFER_RESOURCE: "TRANSFER_RESOURCE",
-    CONSUME_RESOURCE: "CONSUME_RESOURCE",
-  };
 
   /**
    * Initialize the resource system by processing existing operations in Autobase
@@ -1047,13 +1040,26 @@ function createResourceSystem(autobase, options = {}) {
       creatorId: creator.publicIdentity.publicKey.toString("hex"),
     };
 
-    apply([operation]);
+    applyResourceOperations([operation]);
 
     return resources.get(resourceId);
   }
 
   /**
-   * Mints a resource to an account
+   * Apply operations to update the resource system state
+   * @param {Array} ops - Operations to apply
+   */
+  function applyResourceOperations(ops) {
+    for (const op of ops) {
+      updateFromOperation({
+        system: "resource",
+        data: op,
+      });
+    }
+  }
+
+  /**
+   * Mints a resource
    * @param {string} resourceId - The ID of the resource
    * @param {Object|string} to - The recipient's identity or address
    * @param {number} amount - The amount to mint
@@ -1072,7 +1078,7 @@ function createResourceSystem(autobase, options = {}) {
       minterId: minter.publicIdentity.publicKey.toString("hex"),
     };
 
-    apply([operation]);
+    applyResourceOperations([operation]);
 
     const lastOperation = operations[operations.length - 1];
     return lastOperation.status === "success";
@@ -1102,7 +1108,7 @@ function createResourceSystem(autobase, options = {}) {
       timestamp: Date.now(),
     };
 
-    apply([operation]);
+    applyResourceOperations([operation]);
 
     const lastOperation = operations[operations.length - 1];
     return lastOperation.status === "success";
@@ -1129,7 +1135,7 @@ function createResourceSystem(autobase, options = {}) {
       timestamp: Date.now(),
     };
 
-    apply([operation]);
+    applyResourceOperations([operation]);
 
     const lastOperation = operations[operations.length - 1];
     return lastOperation.status === "success";
