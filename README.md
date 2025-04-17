@@ -16,7 +16,7 @@ This project implements a distributed system that provides smart contract-like f
 
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone this repo
 cd autobase
 
 # Install dependencies

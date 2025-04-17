@@ -1,0 +1,46 @@
+# Node.js dependencies
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Hypercore/Corestore/Autobase data directories
+**/data/
+*-storage/
+**/autobase-test-data/
+**/reader-dir/
+**/writer-dir/
+*.hypercore
+
+# Generated files during tests
+test.txt
+examples/**/test-data/
+
+# Temporary files from test runs
+persistence-test-*.json
+
+# OS specific files
+.DS_Store
+Thumbs.db
+.directory
+
+# Editor directories and files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+*.sublime-workspace
+*.swp
+*~
+
+# Logs
+logs
+*.log
+
+# Local environment files
+.env
+.env.local
+
+# Build outputs
+dist/
+build/ 
