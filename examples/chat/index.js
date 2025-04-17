@@ -22,7 +22,7 @@ async function runExample() {
   console.log("=====================\n");
 
   // Create the storage
-  const store = new Corestore("./examples/chat/data");
+  const store = new Corestore("./data-storage/examples/chat");
   await store.ready();
 
   // Create admin identity

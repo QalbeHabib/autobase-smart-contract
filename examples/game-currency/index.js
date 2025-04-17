@@ -20,7 +20,7 @@ async function runExample() {
   console.log("==============================\n");
 
   // Create the storage
-  const store = new Corestore("./examples/game-currency/data");
+  const store = new Corestore("./data-storage/examples/game-currency");
   await store.ready();
 
   // Create identity for admin

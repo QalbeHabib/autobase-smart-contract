@@ -8,7 +8,15 @@
     "start:chat": "node examples/chat/index.js",
     "start:game": "node examples/game-currency/index.js",
     "version": "node show-versions.js",
-    "version:module": "node show-versions.js --module"
+    "version:module": "node show-versions.js --module",
+    "cleanup:data": "rm -rf data-storage/examples/* && mkdir -p data-storage/examples/{chat,game-currency,persistence} && echo 'Data directories cleaned and recreated!'",
+    "examples": "./scripts/run-examples.sh",
+    "tests": "./scripts/run-tests.sh",
+    "run:all": "./scripts/run-all-parallel.sh",
+    "test:identity": "./scripts/test-identity.sh",
+    "test:game-currency": "./scripts/test-game-currency.sh",
+    "example:chat": "./scripts/run-chat-example.sh",
+    "example:game": "./scripts/run-game-example.sh"
   },
   "keywords": [
     "autobase",

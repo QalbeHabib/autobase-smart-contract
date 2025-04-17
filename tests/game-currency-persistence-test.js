@@ -66,7 +66,9 @@ async function simulateFirstRun() {
   );
 
   // Create a fresh store
-  const store = new Corestore("./tests/test-data/currency/game-currency");
+  const store = new Corestore(
+    "./data-storage/examples/game-currency/persistence"
+  );
   await store.ready();
   console.log("✅ Corestore created and ready");
 
@@ -156,7 +158,9 @@ async function simulateRestart() {
   console.log("Recreating smart contract system and checking persistent data");
 
   // Reopen the store
-  const store = new Corestore("./tests/test-data/currency/game-currency");
+  const store = new Corestore(
+    "./data-storage/examples/game-currency/persistence"
+  );
   await store.ready();
   console.log("✅ Corestore reopened");
 

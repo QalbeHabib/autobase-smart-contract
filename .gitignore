@@ -12,6 +12,7 @@ tests/test-data/
 **/reader-dir/
 **/writer-dir/
 *.hypercore
+data-storage/
 
 # Generated files during tests
 test.txt

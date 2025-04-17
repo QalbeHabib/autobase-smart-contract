@@ -18,7 +18,7 @@ async function simulateFirstRun() {
   console.log("Creating fresh autobase instance and registering devices\n");
 
   // Create the storage
-  const store = new Corestore("./tests/test-data/persistence");
+  const store = new Corestore("./data-storage/examples/persistence");
   await store.ready();
 
   // Create Autobase instance
@@ -145,7 +145,7 @@ async function simulateRestart() {
   console.log("Recreating autobase instance and checking persistent data\n");
 
   // Create the storage again
-  const store = new Corestore("./tests/test-data/persistence");
+  const store = new Corestore("./data-storage/examples/persistence");
   await store.ready();
   console.log("Reopened corestore");
 
