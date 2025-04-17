@@ -1,5 +1,5 @@
 # Node.js dependencies
-node_modules/
+/node_modules
 npm-debug.log
 yarn-debug.log
 yarn-error.log
@@ -45,10 +45,4 @@ logs
 
 # Build outputs
 dist/
-build/
-
-# Version management files
-# These are ignored to allow developers to have different local versions
-VERSIONS.md
-VERSION_CATALOG.js
-show-versions.js 
+build/ 

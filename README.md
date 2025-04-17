@@ -271,6 +271,7 @@ The system uses [Autobase](https://www.npmjs.com/package/autobase) to manage a d
 
 These operations are applied to the in-memory state and can be replayed when the application restarts, ensuring consistent state across all nodes.
 
+<!--
 ## Version Management
 
 The project follows [Semantic Versioning](https://semver.org/) (SemVer) guidelines. Each module is tracked independently while maintaining overall system compatibility. For detailed version information, see the `VERSIONS.md` file or run:
@@ -291,4 +292,4 @@ The version tracking system utilizes `VERSION_CATALOG.js` to maintain a record o
 
 ## License
 
-MIT
+MIT -->
