@@ -6,7 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start:chat": "node examples/chat/index.js",
-    "start:game": "node examples/game-currency/index.js"
+    "start:game": "node examples/game-currency/index.js",
+    "version": "node show-versions.js",
+    "version:module": "node show-versions.js --module"
   },
   "keywords": [
     "autobase",
@@ -20,5 +22,8 @@
     "autobase": "^7.5.0",
     "b4a": "^1.6.0",
     "corestore": "^7.4.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }

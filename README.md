@@ -8,7 +8,8 @@ This project implements a distributed system that provides smart contract-like f
 
 - **Identity management**: Create and verify seed-based identities across multiple devices
 - **Permission system**: Role-based access control for various resources
-- **Currency system**: Simple token transfers and balances
+- **Currency system**: Simple token transfers and balances with persistence
+- **Resource system**: Manage in-game resources with minting, transfers, and consumption
 - **Web3 integration**: Bridge to Ethereum-compatible blockchains
 
 ## Installation
@@ -40,6 +41,15 @@ The permissions module (`src/permissions/index.js`) implements role-based access
 - Predefined roles (MEMBER, MODERATOR, ADMIN)
 - Per-room and per-channel permissions
 - Permission verification for operations
+
+### Currency Module
+
+The currency module (`src/currency/index.js`) implements a simple token system with:
+
+- Minting, burning, and transferring tokens
+- Balance tracking
+- Transaction history
+- Persistence across restarts using Autobase
 
 ### Smart Contract System
 
@@ -94,9 +104,9 @@ This demonstrates:
 
 ## Testing
 
-### Running the Identity Tests
+### Running the Tests
 
-These tests verify the core identity functionality and its integration with Autobase:
+These tests verify the core functionality and integration with Autobase:
 
 ```bash
 # Run the basic identity test
@@ -105,8 +115,11 @@ node test-identity.js
 # Run the simple integration test
 node autobase-test.js
 
-# Run the persistence test
+# Run the persistence test for identity
 node persistence-test.js
+
+# Run the currency system test
+node currency-test.js
 ```
 
 ### Test Descriptions
@@ -116,6 +129,8 @@ node persistence-test.js
 2. **Simple Integration Test** (`autobase-test.js`): A streamlined test that demonstrates identity registry working with Autobase.
 
 3. **Persistence Test** (`persistence-test.js`): Tests that device registrations are properly stored in Autobase and can be reconstructed after restarting the application.
+
+4. **Currency Test** (`currency-test.js`): Tests the currency system's ability to mint, transfer, and burn tokens, and verifies that balances persist across application restarts.
 
 ## API Reference
 
@@ -170,6 +185,32 @@ const channel = room.createChannel("announcements");
 const channels = room.getChannels();
 ```
 
+### Currency Module
+
+```javascript
+// Create the currency system
+const currencySystem = createCurrencySystem(autobase, {
+  name: "TestCoin",
+  symbol: "TCN",
+  decimals: 2,
+});
+
+// Mint tokens
+currencySystem.mint(userPublicKey, 1000, adminIdentity);
+
+// Transfer tokens
+currencySystem.transfer(fromPublicKey, toPublicKey, 500);
+
+// Burn tokens
+currencySystem.burn(userPublicKey, 100, adminIdentity);
+
+// Get balance
+const balance = currencySystem.balanceOf(userPublicKey);
+
+// Get transaction history
+const transactions = currencySystem.getTransactions();
+```
+
 ### Smart Contract System
 
 ```javascript
@@ -206,6 +247,43 @@ The system uses [Autobase](https://www.npmjs.com/package/autobase) to manage a d
 ```
 
 These operations are applied to the in-memory state and can be replayed when the application restarts, ensuring consistent state across all nodes.
+
+## Version Management
+
+This project follows [Semantic Versioning](https://semver.org/) for all components. Each module is versioned independently while maintaining compatibility with the overall system version.
+
+### Status Indicators
+
+Throughout the version documentation, you'll find the following status indicators:
+
+- ✅ **Completed/Stable**: Feature is implemented and tested
+- 🔄 **In Progress**: Feature is currently being developed
+- ⏳ **Planned**: Feature is scheduled for future implementation
+- ⚠️ **Beta/Known Issue**: Feature works but may have limitations or known issues
+
+### Version Tracking
+
+The codebase includes a comprehensive version tracking system:
+
+1. **VERSIONS.md**: Contains detailed version history, module-specific versioning, implementation details, and planned features with their current status.
+
+2. **VERSION_CATALOG.js**: Programmatic representation of version data that can be imported into other modules. Includes utility functions for version comparisons and compatibility checks.
+
+3. **show-versions.js**: Command-line tool for displaying version information.
+
+### Checking Version Information
+
+To view detailed version information, use these npm scripts:
+
+```bash
+# Show overall system version with all modules
+npm run version
+
+# Show information for a specific module
+npm run version:module currency  # (replace 'currency' with any module name)
+```
+
+For more detailed information about versions, implementation status, and planned features, please refer to the [VERSIONS.md](./VERSIONS.md) file.
 
 ## License
 

@@ -93,36 +93,36 @@ async function createSmartContractSystem(storage, options = {}) {
           break;
 
         case "currency":
-          if (operation.data.type === "MINT") {
-            const { currencyId, userPublicKey, amount } = operation.data;
-            const key = `${currencyId}_${userPublicKey}`;
-            const currentBalance = state.currency.balances.get(key) || 0;
-            state.currency.balances.set(key, currentBalance + amount);
-          } else if (operation.data.type === "TRANSFER") {
-            const { currencyId, fromPublicKey, toPublicKey, amount } =
-              operation.data;
-            const fromKey = `${currencyId}_${fromPublicKey}`;
-            const toKey = `${currencyId}_${toPublicKey}`;
-            const fromBalance = state.currency.balances.get(fromKey) || 0;
-            const toBalance = state.currency.balances.get(toKey) || 0;
-
-            // Only proceed if sender has enough funds
-            if (fromBalance >= amount) {
-              state.currency.balances.set(fromKey, fromBalance - amount);
-              state.currency.balances.set(toKey, toBalance + amount);
+          console.log(`Processing currency operation: ${operation.data.type}`);
+          // Update our currencySystem with this operation
+          if (typeof currencySystem.updateFromOperation === "function") {
+            const success = currencySystem.updateFromOperation(operation);
+            if (success) {
+              console.log(
+                `Successfully applied currency operation: ${operation.data.type}`
+              );
             }
+          } else {
+            console.warn(
+              "Currency system does not have updateFromOperation method"
+            );
           }
           break;
 
         case "resource":
-          if (operation.data.type === "ADD_RESOURCE") {
-            const { userPublicKey, resourceId, quantity } = operation.data;
-            if (!state.resources.inventory.has(userPublicKey)) {
-              state.resources.inventory.set(userPublicKey, new Map());
+          console.log(`Processing resource operation: ${operation.data.type}`);
+          // Update our resourceSystem with this operation
+          if (typeof resourceSystem.updateFromOperation === "function") {
+            const success = resourceSystem.updateFromOperation(operation);
+            if (success) {
+              console.log(
+                `Successfully applied resource operation: ${operation.data.type}`
+              );
             }
-            const userInventory = state.resources.inventory.get(userPublicKey);
-            const currentQuantity = userInventory.get(resourceId) || 0;
-            userInventory.set(resourceId, currentQuantity + quantity);
+          } else {
+            console.warn(
+              "Resource system does not have updateFromOperation method"
+            );
           }
           break;
 
@@ -165,8 +165,11 @@ async function createSmartContractSystem(storage, options = {}) {
 
   await autobase.ready();
 
-  // Initialize the identity registry with the autobase instance
-  const identityRegistry = identityModule.createIdentityRegistry(autobase);
+  // Initialize the various subsystems with the autobase instance
+  identityRegistry = identityModule.createIdentityRegistry(autobase);
+  currencySystem = currencyModule.createCurrencySystem(autobase);
+  resourceSystem = currencyModule.createResourceSystem(autobase);
+  web3Bridge = new web3Module.Web3Bridge();
 
   // Register the local identity's device if available
   if (localIdentity) {
@@ -180,12 +183,39 @@ async function createSmartContractSystem(storage, options = {}) {
     );
   }
 
-  // Add initial writers if provided
-  for (const writer of writers) {
+  // Fix writer management: Provide a workaround for the addWriter function
+  // since autobase.addInput is not available in the current Autobase version
+  async function addWriter(writerPublicKey) {
     try {
-      await autobase.addInput(writer);
+      // Check if Autobase has the expected method
+      if (typeof autobase.addInput === "function") {
+        // Use the original method if available
+        await autobase.addInput(writerPublicKey);
+        return true;
+      } else if (typeof autobase.append === "function") {
+        // Use an operation-based approach as a workaround
+        const operation = {
+          system: "system",
+          data: {
+            type: "ADD_WRITER",
+            writerPublicKey: Buffer.isBuffer(writerPublicKey)
+              ? writerPublicKey.toString("hex")
+              : writerPublicKey,
+          },
+          timestamp: Date.now(),
+        };
+        await autobase.append(operation);
+        console.log(
+          `Writer added via operation: ${operation.data.writerPublicKey}`
+        );
+        return true;
+      } else {
+        console.warn("No method available to add writer");
+        return false;
+      }
     } catch (err) {
       console.error("Error adding writer:", err);
+      return false;
     }
   }
 
@@ -206,6 +236,48 @@ async function createSmartContractSystem(storage, options = {}) {
     }
   }
 
+  // Initialize all subsystems to load and apply existing operations
+  async function initializeAllSubsystems() {
+    console.log("Initializing all subsystems...");
+
+    try {
+      // Initialize identity registry
+      if (
+        identityRegistry &&
+        typeof identityRegistry.forceInitialize === "function"
+      ) {
+        await identityRegistry.forceInitialize();
+      }
+
+      // Initialize currency system
+      if (
+        currencySystem &&
+        typeof currencySystem.forceInitialize === "function"
+      ) {
+        await currencySystem.forceInitialize();
+      }
+
+      // Initialize resource system
+      if (
+        resourceSystem &&
+        typeof resourceSystem.forceInitialize === "function"
+      ) {
+        await resourceSystem.forceInitialize();
+      }
+
+      console.log("All subsystems initialized");
+    } catch (error) {
+      console.error("Error initializing subsystems:", error);
+    }
+  }
+
+  // Schedule initialization after current execution context
+  setTimeout(() => {
+    initializeAllSubsystems().catch((err) =>
+      console.error("Error during subsystem initialization:", err)
+    );
+  }, 0);
+
   // Set up the smart contract system interface
   return {
     // The underlying autobase instance
@@ -217,16 +289,17 @@ async function createSmartContractSystem(storage, options = {}) {
     // Identity management
     identityRegistry,
 
+    // Currency management
+    currencySystem,
+
+    // Resource management
+    resourceSystem,
+
     // Add a new writer to the autobase
-    async addWriter(writerPublicKey) {
-      try {
-        await autobase.addInput(writerPublicKey);
-        return true;
-      } catch (err) {
-        console.error("Error adding writer:", err);
-        return false;
-      }
-    },
+    addWriter,
+
+    // Initialize all subsystems
+    initializeAllSubsystems,
 
     // Permission system methods
     async setPermission(channelId, userPublicKey, role) {
@@ -265,25 +338,18 @@ async function createSmartContractSystem(storage, options = {}) {
       );
     },
 
-    // Currency system methods
+    // Currency system methods - delegate to currencySystem
     async mintCurrency(currencyId, userPublicKey, amount) {
       const keyStr = Buffer.isBuffer(userPublicKey)
         ? userPublicKey.toString("hex")
         : userPublicKey;
 
-      // Update local state immediately for fast feedback
-      const key = `${currencyId}_${keyStr}`;
-      const currentBalance = state.currency.balances.get(key) || 0;
-      state.currency.balances.set(key, currentBalance + amount);
-
-      const result = await appendOperation("currency", {
-        type: "MINT",
-        currencyId,
-        userPublicKey: keyStr,
-        amount,
+      // Instead of updating state directly, use the currencySystem
+      const success = currencySystem.mint(keyStr, amount, {
+        publicIdentity: { publicKey: Buffer.from("system") },
       });
 
-      return result;
+      return success;
     },
 
     async transferCurrency(currencyId, fromPublicKey, toPublicKey, amount) {
@@ -295,27 +361,10 @@ async function createSmartContractSystem(storage, options = {}) {
         ? toPublicKey.toString("hex")
         : toPublicKey;
 
-      // Update local state immediately for fast feedback
-      const fromKey = `${currencyId}_${fromKeyStr}`;
-      const toKey = `${currencyId}_${toKeyStr}`;
-      const fromBalance = state.currency.balances.get(fromKey) || 0;
-      const toBalance = state.currency.balances.get(toKey) || 0;
+      // Use the currencySystem to handle the transfer
+      const success = currencySystem.transfer(fromKeyStr, toKeyStr, amount);
 
-      // Only proceed if sender has enough funds
-      if (fromBalance >= amount) {
-        state.currency.balances.set(fromKey, fromBalance - amount);
-        state.currency.balances.set(toKey, toBalance + amount);
-      }
-
-      const result = await appendOperation("currency", {
-        type: "TRANSFER",
-        currencyId,
-        fromPublicKey: fromKeyStr,
-        toPublicKey: toKeyStr,
-        amount,
-      });
-
-      return result;
+      return success;
     },
 
     getCurrencyBalance(currencyId, userPublicKey) {
@@ -323,32 +372,32 @@ async function createSmartContractSystem(storage, options = {}) {
         ? userPublicKey.toString("hex")
         : userPublicKey;
 
-      const key = `${currencyId}_${keyStr}`;
-      return state.currency.balances.get(key) || 0;
+      // Use the currencySystem to get the balance
+      return currencySystem.balanceOf(keyStr);
     },
 
-    // Resource system methods
+    // Resource system methods - delegate to resourceSystem
     async addResource(userPublicKey, resourceId, quantity) {
       const keyStr = Buffer.isBuffer(userPublicKey)
         ? userPublicKey.toString("hex")
         : userPublicKey;
 
-      // Update local state immediately for fast feedback
-      if (!state.resources.inventory.has(keyStr)) {
-        state.resources.inventory.set(keyStr, new Map());
+      // Use the resourceSystem to handle adding resources
+      if (quantity > 0) {
+        return resourceSystem.mintResource(resourceId, keyStr, quantity, {
+          publicIdentity: { publicKey: Buffer.from("system") },
+        });
+      } else if (quantity < 0) {
+        // For removal, use consume
+        return resourceSystem.consumeResource(
+          resourceId,
+          keyStr,
+          Math.abs(quantity),
+          "Manual adjustment"
+        );
       }
-      const userInventory = state.resources.inventory.get(keyStr);
-      const currentQuantity = userInventory.get(resourceId) || 0;
-      userInventory.set(resourceId, currentQuantity + quantity);
 
-      const result = await appendOperation("resource", {
-        type: "ADD_RESOURCE",
-        userPublicKey: keyStr,
-        resourceId,
-        quantity,
-      });
-
-      return result;
+      return true;
     },
 
     getResourceQuantity(userPublicKey, resourceId) {
@@ -356,9 +405,9 @@ async function createSmartContractSystem(storage, options = {}) {
         ? userPublicKey.toString("hex")
         : userPublicKey;
 
-      const userInventory = state.resources.inventory.get(keyStr);
-      if (!userInventory) return 0;
-      return userInventory.get(resourceId) || 0;
+      // Use the resourceSystem to get the quantity
+      const holdings = resourceSystem.getHoldings(keyStr);
+      return holdings[resourceId] || 0;
     },
 
     // Token-gated access

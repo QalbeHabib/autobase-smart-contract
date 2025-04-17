@@ -28,6 +28,12 @@ function createCurrencySystem(autobase, options = {}) {
   const transactions = [];
   let totalSupply = 0;
 
+  // Flag to track if the system is initialized from Autobase
+  let isInitialized = false;
+
+  // Keep track of processed operations to prevent duplicates
+  const processedOperations = new Set();
+
   // Operation types for the Autobase
   const OP_TYPES = {
     MINT: "MINT",
@@ -39,6 +45,126 @@ function createCurrencySystem(autobase, options = {}) {
   if (config.initialSupply > 0 && config.initialHolder) {
     balances.set(config.initialHolder, config.initialSupply);
     totalSupply = config.initialSupply;
+  }
+
+  /**
+   * Generate a unique ID for an operation to track duplicates
+   * @param {Object} operation - The operation to generate an ID for
+   * @returns {string} A unique ID for the operation
+   */
+  function generateOperationId(operation) {
+    if (
+      !operation ||
+      !operation.system ||
+      !operation.data ||
+      !operation.timestamp
+    ) {
+      return null;
+    }
+
+    // Create a unique ID based on the operation type, data, and timestamp
+    const { type } = operation.data;
+    let idParts = [operation.system, type, operation.timestamp];
+
+    switch (type) {
+      case "MINT":
+        if (operation.data.to && operation.data.amount) {
+          idParts.push(operation.data.to, operation.data.amount);
+        }
+        break;
+      case "TRANSFER":
+        if (operation.data.from && operation.data.to && operation.data.amount) {
+          idParts.push(
+            operation.data.from,
+            operation.data.to,
+            operation.data.amount
+          );
+        }
+        break;
+      case "BURN":
+        if (operation.data.from && operation.data.amount) {
+          idParts.push(operation.data.from, operation.data.amount);
+        }
+        break;
+    }
+
+    return idParts.join("_");
+  }
+
+  /**
+   * Initialize the currency system by processing existing operations in Autobase
+   * @returns {Promise<void>}
+   */
+  async function initialize() {
+    if (isInitialized || !autobase) return;
+
+    try {
+      console.log("Initializing currency system from Autobase...");
+
+      // Reset state before loading
+      balances.clear();
+      transactions.length = 0;
+      totalSupply = 0;
+      processedOperations.clear();
+
+      // For Autobase 7.5.0, we need to explicitly handle reading operations
+      if (autobase.view && typeof autobase.view.get === "function") {
+        const length = autobase.view.length;
+        console.log(`Loading ${length} operations from Autobase view...`);
+
+        // Process each operation from the view
+        for (let i = 0; i < length; i++) {
+          try {
+            const nodeValue = await autobase.view.get(i);
+            if (!nodeValue) continue;
+
+            // Parse the operation
+            let operation;
+            if (typeof nodeValue === "string") {
+              operation = JSON.parse(nodeValue);
+            } else if (Buffer.isBuffer(nodeValue)) {
+              operation = JSON.parse(nodeValue.toString());
+            } else {
+              operation = nodeValue;
+            }
+
+            // Process currency operations
+            if (operation.system === "currency" && operation.data) {
+              // Generate a unique ID for this operation
+              const opId = generateOperationId(operation);
+
+              // Skip if we've already processed this operation
+              if (opId && processedOperations.has(opId)) {
+                console.log(
+                  `Skipping duplicate operation: ${operation.data.type}`
+                );
+                continue;
+              }
+
+              // Process the operation
+              updateFromOperation(operation);
+
+              // Mark as processed if we have an ID
+              if (opId) {
+                processedOperations.add(opId);
+              }
+            }
+          } catch (error) {
+            console.error(`Error processing operation at index ${i}:`, error);
+          }
+        }
+      }
+
+      // Trigger Autobase update to process any new operations
+      if (typeof autobase.update === "function") {
+        await autobase.update();
+      }
+
+      isInitialized = true;
+      console.log("Currency system initialized");
+    } catch (error) {
+      console.error("Failed to initialize currency system:", error);
+    }
   }
 
   /**
@@ -73,6 +199,114 @@ function createCurrencySystem(autobase, options = {}) {
       totalSupply,
       config,
     };
+  }
+
+  /**
+   * Process currency operation from Autobase
+   * @param {Object} operation - The operation from Autobase
+   * @returns {boolean} Success status
+   */
+  function updateFromOperation(operation) {
+    try {
+      if (operation.system === "currency" && operation.data) {
+        console.log(`Processing currency operation: ${operation.data.type}`);
+
+        const { type } = operation.data;
+
+        switch (type) {
+          case "MINT":
+            const { to, amount, minterId } = operation.data;
+            mintInternal(to, amount, minterId);
+            console.log(
+              `Applied mint operation: ${amount} coins to ${to.slice(0, 10)}...`
+            );
+            return true;
+
+          case "TRANSFER":
+            const {
+              from,
+              to: recipient,
+              amount: transferAmount,
+            } = operation.data;
+            transferInternal(
+              from,
+              recipient,
+              transferAmount,
+              operation.timestamp || Date.now()
+            );
+            console.log(
+              `Applied transfer operation: ${transferAmount} coins from ${from.slice(
+                0,
+                10
+              )}... to ${recipient.slice(0, 10)}...`
+            );
+            return true;
+
+          case "BURN":
+            const {
+              from: burnFrom,
+              amount: burnAmount,
+              burnerId,
+            } = operation.data;
+            burnInternal(burnFrom, burnAmount, burnerId);
+            console.log(
+              `Applied burn operation: ${burnAmount} coins from ${burnFrom.slice(
+                0,
+                10
+              )}...`
+            );
+            return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error("Error applying currency operation:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Function to write a currency operation to autobase
+   * @param {string} type - The operation type (MINT, TRANSFER, BURN)
+   * @param {Object} data - The operation data
+   * @returns {Promise<boolean>} Success status
+   */
+  async function writeOperation(type, data) {
+    try {
+      if (!autobase) {
+        console.warn("No autobase instance provided");
+        return false;
+      }
+
+      // Create the operation object
+      const operation = {
+        system: "currency",
+        data: {
+          type,
+          ...data,
+        },
+        timestamp: Date.now(),
+      };
+
+      // Generate an ID and add to the set of processed operations
+      const opId = generateOperationId(operation);
+      if (opId) {
+        processedOperations.add(opId);
+      }
+
+      // Append to autobase if it's available
+      if (typeof autobase.append === "function") {
+        await autobase.append(operation);
+        console.log(`Currency operation of type ${type} written to Autobase`);
+        return true;
+      } else {
+        console.warn("Autobase does not have an append method");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error writing currency operation:", error);
+      return false;
+    }
   }
 
   /**
@@ -194,19 +428,28 @@ function createCurrencySystem(autobase, options = {}) {
     // In a real implementation, we would check if the minter is authorized
     // For simplicity, we'll allow anyone to mint in this example
 
-    // Create the operation
-    const operation = {
-      type: OP_TYPES.MINT,
-      to:
-        typeof to === "object"
-          ? to.publicIdentity.publicKey.toString("hex")
-          : to,
+    // Convert inputs for storage
+    const toStr =
+      typeof to === "object" ? to.publicIdentity.publicKey.toString("hex") : to;
+
+    const minterStr = minter.publicIdentity.publicKey.toString("hex");
+
+    // Create the operation data
+    const operationData = {
+      to: toStr,
       amount,
-      minterId: minter.publicIdentity.publicKey.toString("hex"),
+      minterId: minterStr,
     };
 
-    // Apply the operation
-    const result = apply([operation]);
+    // Apply the operation locally
+    mintInternal(toStr, amount, minterStr);
+
+    // Write to autobase if available
+    if (autobase) {
+      writeOperation(OP_TYPES.MINT, operationData).catch((err) => {
+        console.error("Failed to write mint operation to autobase:", err);
+      });
+    }
 
     // Check if the operation was successful
     const lastTransaction = transactions[transactions.length - 1];
@@ -221,23 +464,32 @@ function createCurrencySystem(autobase, options = {}) {
    * @returns {boolean} Success status
    */
   function transfer(from, to, amount) {
-    // Create the operation
-    const operation = {
-      type: OP_TYPES.TRANSFER,
-      from:
-        typeof from === "object"
-          ? from.publicIdentity.publicKey.toString("hex")
-          : from,
-      to:
-        typeof to === "object"
-          ? to.publicIdentity.publicKey.toString("hex")
-          : to,
+    // Convert inputs for storage
+    const fromStr =
+      typeof from === "object"
+        ? from.publicIdentity.publicKey.toString("hex")
+        : from;
+
+    const toStr =
+      typeof to === "object" ? to.publicIdentity.publicKey.toString("hex") : to;
+
+    // Create the operation data
+    const operationData = {
+      from: fromStr,
+      to: toStr,
       amount,
       timestamp: Date.now(),
     };
 
-    // Apply the operation
-    const result = apply([operation]);
+    // Apply the operation locally
+    transferInternal(fromStr, toStr, amount, operationData.timestamp);
+
+    // Write to autobase if available
+    if (autobase) {
+      writeOperation(OP_TYPES.TRANSFER, operationData).catch((err) => {
+        console.error("Failed to write transfer operation to autobase:", err);
+      });
+    }
 
     // Check if the operation was successful
     const lastTransaction = transactions[transactions.length - 1];
@@ -252,19 +504,30 @@ function createCurrencySystem(autobase, options = {}) {
    * @returns {boolean} Success status
    */
   function burn(from, amount, burner) {
-    // Create the operation
-    const operation = {
-      type: OP_TYPES.BURN,
-      from:
-        typeof from === "object"
-          ? from.publicIdentity.publicKey.toString("hex")
-          : from,
+    // Convert inputs for storage
+    const fromStr =
+      typeof from === "object"
+        ? from.publicIdentity.publicKey.toString("hex")
+        : from;
+
+    const burnerStr = burner.publicIdentity.publicKey.toString("hex");
+
+    // Create the operation data
+    const operationData = {
+      from: fromStr,
       amount,
-      burnerId: burner.publicIdentity.publicKey.toString("hex"),
+      burnerId: burnerStr,
     };
 
-    // Apply the operation
-    const result = apply([operation]);
+    // Apply the operation locally
+    burnInternal(fromStr, amount, burnerStr);
+
+    // Write to autobase if available
+    if (autobase) {
+      writeOperation(OP_TYPES.BURN, operationData).catch((err) => {
+        console.error("Failed to write burn operation to autobase:", err);
+      });
+    }
 
     // Check if the operation was successful
     const lastTransaction = transactions[transactions.length - 1];
@@ -274,69 +537,78 @@ function createCurrencySystem(autobase, options = {}) {
   /**
    * Gets the balance of an account
    * @param {Object|string} account - The account to check
-   * @returns {number} The account balance
+   * @returns {number} The balance
    */
   function balanceOf(account) {
-    const address =
+    const key =
       typeof account === "object"
         ? account.publicIdentity.publicKey.toString("hex")
         : account;
 
-    return balances.get(address) || 0;
+    return balances.get(key) || 0;
   }
 
   /**
-   * Gets the transaction history
-   * @param {Object} options - Filter options
-   * @returns {Array} The filtered transactions
+   * Gets transaction history
+   * @param {Object} options - Options for filtering transactions
+   * @returns {Array} The transaction history
    */
   function getTransactions(options = {}) {
-    let filteredTransactions = [...transactions];
+    const { from, to, type, status } = options;
 
-    // Filter by account
-    if (options.account) {
-      const address =
-        typeof options.account === "object"
-          ? options.account.publicIdentity.publicKey.toString("hex")
-          : options.account;
+    let filtered = [...transactions];
 
-      filteredTransactions = filteredTransactions.filter(
-        (tx) => tx.from === address || tx.to === address
-      );
+    if (from) {
+      const fromKey =
+        typeof from === "object"
+          ? from.publicIdentity.publicKey.toString("hex")
+          : from;
+
+      filtered = filtered.filter((tx) => tx.from === fromKey);
     }
 
-    // Filter by type
-    if (options.type) {
-      filteredTransactions = filteredTransactions.filter(
-        (tx) => tx.type === options.type
-      );
+    if (to) {
+      const toKey =
+        typeof to === "object"
+          ? to.publicIdentity.publicKey.toString("hex")
+          : to;
+
+      filtered = filtered.filter((tx) => tx.to === toKey);
     }
 
-    // Filter by status
-    if (options.status) {
-      filteredTransactions = filteredTransactions.filter(
-        (tx) => tx.status === options.status
-      );
+    if (type) {
+      filtered = filtered.filter((tx) => tx.type === type);
     }
 
-    return filteredTransactions;
+    if (status) {
+      filtered = filtered.filter((tx) => tx.status === status);
+    }
+
+    return filtered;
+  }
+
+  // Initialize the system if autobase is provided
+  if (autobase) {
+    // Schedule initialization after current execution context
+    setTimeout(() => {
+      initialize().catch((err) => console.error("Initialization error:", err));
+    }, 0);
   }
 
   return {
-    // Currency info
-    name: config.name,
-    symbol: config.symbol,
-    decimals: config.decimals,
-    maxSupply: config.maxSupply,
-
-    // Methods
+    // Core functionality
     mint,
     transfer,
     burn,
     balanceOf,
     getTransactions,
 
-    // State accessors
+    // System functions for Autobase integration
+    updateFromOperation,
+    initialize,
+    forceInitialize: initialize, // Alias for consistency with identity registry
+
+    // Stats
     get totalSupply() {
       return totalSupply;
     },
@@ -378,6 +650,9 @@ function createResourceSystem(autobase, options = {}) {
   // Resource operations
   const operations = [];
 
+  // Flag to track if the system is initialized from Autobase
+  let isInitialized = false;
+
   // Operation types
   const OP_TYPES = {
     CREATE_RESOURCE: "CREATE_RESOURCE",
@@ -387,61 +662,153 @@ function createResourceSystem(autobase, options = {}) {
   };
 
   /**
-   * The apply function for the resource system
-   * @param {Array} ops - The operations to apply
-   * @returns {Object} The new state
+   * Initialize the resource system by processing existing operations in Autobase
+   * @returns {Promise<void>}
    */
-  function apply(ops) {
-    // Process operations in order
-    for (const op of ops) {
-      switch (op.type) {
-        case OP_TYPES.CREATE_RESOURCE:
-          createResourceInternal(
-            op.resourceId,
-            op.name,
-            op.description,
-            op.maxSupply,
-            op.creatorId
-          );
-          break;
+  async function initialize() {
+    if (isInitialized || !autobase) return;
 
-        case OP_TYPES.MINT_RESOURCE:
-          mintResourceInternal(op.resourceId, op.to, op.amount, op.minterId);
-          break;
+    try {
+      console.log("Initializing resource system from Autobase...");
 
-        case OP_TYPES.TRANSFER_RESOURCE:
-          transferResourceInternal(
-            op.resourceId,
-            op.from,
-            op.to,
-            op.amount,
-            op.timestamp
-          );
-          break;
-
-        case OP_TYPES.CONSUME_RESOURCE:
-          consumeResourceInternal(
-            op.resourceId,
-            op.from,
-            op.amount,
-            op.reason,
-            op.timestamp
-          );
-          break;
+      // Trigger Autobase update to process existing operations
+      if (typeof autobase.update === "function") {
+        await autobase.update();
       }
-    }
 
-    // Return the updated state
-    return {
-      resources: Array.from(resources.values()),
-      holdings: Object.fromEntries(
-        Array.from(holdings.entries()).map(([key, value]) => [
-          key,
-          Object.fromEntries(value),
-        ])
-      ),
-      operations,
-    };
+      isInitialized = true;
+      console.log("Resource system initialized");
+    } catch (error) {
+      console.error("Failed to initialize resource system:", error);
+    }
+  }
+
+  /**
+   * Process resource operation from Autobase
+   * @param {Object} operation - The operation from Autobase
+   * @returns {boolean} Success status
+   */
+  function updateFromOperation(operation) {
+    try {
+      if (operation.system === "resource" && operation.data) {
+        console.log(`Processing resource operation: ${operation.data.type}`);
+
+        const { type } = operation.data;
+
+        switch (type) {
+          case "CREATE_RESOURCE":
+            const { resourceId, name, description, maxSupply, creatorId } =
+              operation.data;
+            createResourceInternal(
+              resourceId,
+              name,
+              description,
+              maxSupply,
+              creatorId
+            );
+            console.log(
+              `Applied create resource operation: ${name} (${resourceId})`
+            );
+            return true;
+
+          case "MINT_RESOURCE":
+            const {
+              resourceId: mintResourceId,
+              to,
+              amount,
+              minterId,
+            } = operation.data;
+            mintResourceInternal(mintResourceId, to, amount, minterId);
+            console.log(
+              `Applied mint resource operation: ${amount} of ${mintResourceId} to ${to.slice(
+                0,
+                10
+              )}...`
+            );
+            return true;
+
+          case "TRANSFER_RESOURCE":
+            const {
+              resourceId: transferResourceId,
+              from,
+              to: recipient,
+              amount: transferAmount,
+            } = operation.data;
+            transferResourceInternal(
+              transferResourceId,
+              from,
+              recipient,
+              transferAmount,
+              operation.timestamp || Date.now()
+            );
+            console.log(
+              `Applied transfer resource operation: ${transferAmount} of ${transferResourceId}`
+            );
+            return true;
+
+          case "CONSUME_RESOURCE":
+            const {
+              resourceId: consumeResourceId,
+              from: consumer,
+              amount: consumeAmount,
+              reason,
+            } = operation.data;
+            consumeResourceInternal(
+              consumeResourceId,
+              consumer,
+              consumeAmount,
+              reason,
+              operation.timestamp || Date.now()
+            );
+            console.log(
+              `Applied consume resource operation: ${consumeAmount} of ${consumeResourceId}`
+            );
+            return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error("Error applying resource operation:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Function to write a resource operation to autobase
+   * @param {string} type - The operation type
+   * @param {Object} data - The operation data
+   * @returns {Promise<boolean>} Success status
+   */
+  async function writeOperation(type, data) {
+    try {
+      if (!autobase) {
+        console.warn("No autobase instance provided");
+        return false;
+      }
+
+      // Create the operation object
+      const operation = {
+        system: "resource",
+        data: {
+          type,
+          ...data,
+        },
+        timestamp: Date.now(),
+      };
+
+      // Append to autobase if it's available
+      if (typeof autobase.append === "function") {
+        await autobase.append(operation);
+        console.log(`Resource operation of type ${type} written to Autobase`);
+        return true;
+      } else {
+        console.warn("Autobase does not have an append method");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error writing resource operation:", error);
+      return false;
+    }
   }
 
   /**
@@ -803,6 +1170,14 @@ function createResourceSystem(autobase, options = {}) {
     return resources.get(resourceId);
   }
 
+  // Initialize the system if autobase is provided
+  if (autobase) {
+    // Schedule initialization after current execution context
+    setTimeout(() => {
+      initialize().catch((err) => console.error("Initialization error:", err));
+    }, 0);
+  }
+
   return {
     // Methods
     createResource,
@@ -812,6 +1187,11 @@ function createResourceSystem(autobase, options = {}) {
     getHoldings,
     getAllResources,
     getResource,
+
+    // Add new methods for Autobase integration
+    updateFromOperation,
+    initialize,
+    forceInitialize: initialize,
   };
 }
 
