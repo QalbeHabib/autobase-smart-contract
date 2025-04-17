@@ -1,240 +1,211 @@
-# P2P Smart Contracts with Autobase
+# Autobase Smart Contract System
 
-This repository provides a solution for implementing smart contract-like functionality in peer-to-peer applications using Holepunch's Autobase.
+A decentralized smart contract-like system built on top of [Autobase](https://docs.pears.com/building-blocks/autobase), providing identity management, permissions, currency, and web3 integration in a peer-to-peer environment.
 
 ## Overview
 
-This implementation addresses several key challenges when building decentralized applications with Autobase:
+This project implements a distributed system that provides smart contract-like functionality without requiring a blockchain. It uses Autobase to create a linearized, eventually consistent view of operations coming from multiple writers. The system includes:
 
-1. **Multi-Device Identity** - A seed-based identity system allowing users to use the same identity across multiple devices
-2. **Permission System** - Role-based access control for rooms and channels
-3. **Smart Contract Functionality** - Deterministic execution of rules for currency and resources
-4. **Web3 Integration** - Bridge for connecting with blockchain ecosystems
-
-## Core Concepts
-
-### Seed-Based Identity
-
-The traditional approach in Hypercore assigns each device a unique keypair, creating problems for multi-device users. Our solution:
-
-- Uses a master seed to derive consistent identity keys
-- Registers device keys signed by the master identity
-- Maintains a registry of authorized devices
-
-### Apply Function as Smart Contract
-
-Autobase's apply function serves as our smart contract executor:
-
-- Deterministically orders operations from all writers
-- Validates operations according to defined rules
-- Maintains consistent state across all peers
-
-### Permission System
-
-Role-based access control is implemented through:
-
-- Special entries in the Autobase defining roles and permissions
-- Validation in the apply function to enforce access rules
-- Admin capabilities for permission management
-
-## File Structure
-
-```
-/src
-  /identity       - Seed-based identity management
-  /permissions    - Role and permission system
-  /contracts      - Contract implementations
-  /currency       - Currency and resource system
-  /web3           - Web3 integration bridge
-/examples
-  /chat           - Example chat application
-  /game-currency  - Example game with currency
-/tests            - Test suite
-```
+- **Identity management**: Create and verify seed-based identities across multiple devices
+- **Permission system**: Role-based access control for various resources
+- **Currency system**: Simple token transfers and balances
+- **Web3 integration**: Bridge to Ethereum-compatible blockchains
 
 ## Installation
 
 ```bash
+# Clone the repository
+git clone <repository-url>
+cd autobase
+
+# Install dependencies
 npm install
 ```
 
-## Basic Usage
+## Core Components
 
-### Initialize the Smart Contract System
+### Identity Module
+
+The identity module (`src/identity/index.js`) provides functionality for creating and managing seed-based identities that work across multiple devices. It includes:
+
+- Creating deterministic key pairs from seed phrases
+- Signing and verifying messages
+- Managing device keys associated with identities
+- Storing device registrations in Autobase
+
+### Permissions Module
+
+The permissions module (`src/permissions/index.js`) implements role-based access control with:
+
+- Predefined roles (MEMBER, MODERATOR, ADMIN)
+- Per-room and per-channel permissions
+- Permission verification for operations
+
+### Smart Contract System
+
+The contracts module (`src/contracts/index.js`) ties everything together to provide a unified smart contract-like experience. It:
+
+- Creates an Autobase instance to store operations
+- Manages the state for all subsystems (identity, permissions, currency)
+- Provides methods for interacting with each subsystem
+
+## Running the System
+
+### Basic Usage
 
 ```javascript
 const Corestore = require("corestore");
-const {
-  createSmartContractSystem,
-  createIdentity,
-} = require("./src/contracts");
+const system = require("./index");
 
-// Create a user identity from a seed phrase
-const userIdentity = createIdentity("your secret seed phrase");
+async function main() {
+  // Create storage
+  const store = new Corestore("./data");
+  await store.ready();
 
-// Initialize storage and the contract system
-const store = new Corestore("./data");
-await store.ready();
+  // Create user identity
+  const identity = system.createIdentity("my seed phrase");
 
-const contractSystem = await createSmartContractSystem(store, {
-  localIdentity: userIdentity,
-  writers: [], // Initial writers
-});
+  // Create smart contract system
+  const contract = await system.createSmartContractSystem(store, {
+    localIdentity: identity,
+  });
 
-// Now you can use the contract system!
+  // Use the system
+  // ... (examples below)
+}
+
+main().catch(console.error);
 ```
 
-### Using Permissions
+### Example: Chat Application
 
-```javascript
-// Create a room with permissions
-const channelId = "general-chat";
-await contractSystem.setPermission(
-  channelId,
-  userIdentity.publicIdentity.publicKey,
-  "ADMIN"
-);
-
-// Check permissions
-const role = await contractSystem.getPermission(
-  channelId,
-  userIdentity.publicIdentity.publicKey
-);
-console.log(`User has role: ${role}`);
-```
-
-### Managing Currency
-
-```javascript
-// Create and manage currency
-const currencyId = "gold-coins";
-await contractSystem.mintCurrency(
-  currencyId,
-  userIdentity.publicIdentity.publicKey,
-  100
-);
-
-// Transfer currency
-const friendPublicKey = friendIdentity.publicIdentity.publicKey;
-await contractSystem.transferCurrency(
-  currencyId,
-  userIdentity.publicIdentity.publicKey,
-  friendPublicKey,
-  25
-);
-
-// Check balances
-const balance = contractSystem.getCurrencyBalance(
-  currencyId,
-  userIdentity.publicIdentity.publicKey
-);
-console.log(`User balance: ${balance}`);
-```
-
-### Working with Resources
-
-```javascript
-// Add resources
-const resourceId = "wood";
-await contractSystem.addResource(
-  userIdentity.publicIdentity.publicKey,
-  resourceId,
-  10
-);
-
-// Check resources
-const woodAmount = contractSystem.getResourceQuantity(
-  userIdentity.publicIdentity.publicKey,
-  resourceId
-);
-console.log(`User has ${woodAmount} wood`);
-```
-
-### Token-Gated Access
-
-```javascript
-// Create token-gated access for a channel
-const tokenContract = "0x1234567890123456789012345678901234567890";
-await contractSystem.setTokenGate("vip-channel", tokenContract, 5, "ERC20");
-
-// Verify token access
-const hasAccess = await contractSystem.verifyTokenAccess(
-  "vip-channel",
-  userWalletAddress
-);
-console.log(`User has access: ${hasAccess}`);
-```
-
-## Running the Examples
+The repository includes a complete chat example in `examples/chat/index.js`. Run it with:
 
 ```bash
-# Run the chat example
-npm run start:chat
-
-# Run the game currency example
-npm run start:game
+node examples/chat/index.js
 ```
 
-## Core Challenges Solved
+This demonstrates:
 
-### 1. Multi-Device Synchronization
+- Creating identities
+- Setting up channels with permissions
+- Token-gated access control
+- Message sending with verification
 
-Our implementation maintains consistent identity across devices by:
+## Testing
 
-- Using cryptographic signatures to authorize new devices
-- Registering device keys in a shared registry
-- Validating operations from authorized devices
+### Running the Identity Tests
 
-### 2. Permission Management
+These tests verify the core identity functionality and its integration with Autobase:
 
-The role-based permission system:
+```bash
+# Run the basic identity test
+node test-identity.js
 
-- Defines granular permissions for different actions
-- Enforces permissions in the apply function
-- Provides admin capabilities for permission management
+# Run the simple integration test
+node autobase-test.js
 
-### 3. Smart Contract Functionality
+# Run the persistence test
+node persistence-test.js
+```
 
-The smart contract system provides:
+### Test Descriptions
 
-- Deterministic execution of rules
-- Currency and resource management
-- Transaction validation and history
+1. **Basic Identity Test** (`test-identity.js`): Tests the basic functionality of the identity registry, including creating identities, registering devices, and verifying authorizations.
 
-### 4. Web3 Integration
+2. **Simple Integration Test** (`autobase-test.js`): A streamlined test that demonstrates identity registry working with Autobase.
 
-The Web3 bridge:
+3. **Persistence Test** (`persistence-test.js`): Tests that device registrations are properly stored in Autobase and can be reconstructed after restarting the application.
 
-- Provides compatibility with blockchain ecosystems
-- Implements cryptographic primitives for verification
-- Enables token-gated access control
+## API Reference
 
-## Use Cases
+### Identity Module
 
-- **Decentralized Chat Applications**: With role-based access control
-- **P2P Games**: With in-game currency and resource management
-- **Token-Gated Communities**: Using Web3 verification
-- **NFT-Like Digital Assets**: For in-game items and collectibles
+```javascript
+// Create a user identity from a seed phrase
+const identity = createIdentity("my seed phrase");
 
-## Technical Details
+// Set a display name
+identity.setDisplayName("Alice");
 
-### Autobase Implementation
+// Create an identity registry with Autobase
+const registry = createIdentityRegistry(autobase);
 
-Our system leverages Autobase's powerful features:
+// Register a device
+registry.registerDevice(
+  identity.publicIdentity.publicKey,
+  identity.privateIdentity.deviceKeyPair.publicKey,
+  identity.privateIdentity.authSignature
+);
 
-- Uses the `open` and `apply` functions to maintain state consistency
-- Appends operations as structured data to the event log
-- Processes operations in a consistent order across all peers
+// Check device authorization
+const isAuthorized = registry.isAuthorizedDevice(
+  masterPublicKey,
+  devicePublicKey
+);
 
-The identity system allows for:
+// Get all devices for an identity
+const devices = registry.getDevicesForIdentity(masterPublicKey);
+```
 
-- Creation of devices from a master seed
-- Registration of devices with cryptographic authorization
-- Verification of device signatures against master identities
+### Permissions Module
 
-## Contributing
+```javascript
+// Create a permission system
+const permissionSystem = createPermissionSystem(autobase);
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+// Create a room
+const room = permissionSystem.createRoom("General", adminIdentity);
+
+// Add a member
+room.addMember(userIdentity, { role: "MEMBER" });
+
+// Update a member's role
+room.updateMemberRole(userIdentity, "MODERATOR");
+
+// Create a channel
+const channel = room.createChannel("announcements");
+
+// Get all channels
+const channels = room.getChannels();
+```
+
+### Smart Contract System
+
+```javascript
+// Create the system
+const system = await createSmartContractSystem(store, {
+  localIdentity: identity,
+});
+
+// Add a writer
+await system.addWriter(otherPublicKey);
+
+// Set permissions
+await system.setPermission(channelId, userPublicKey, "ADMIN");
+
+// Currency operations
+await system.mintCurrency("coin", userPublicKey, 100);
+await system.transferCurrency("coin", fromPublicKey, toPublicKey, 50);
+const balance = system.getCurrencyBalance("coin", userPublicKey);
+```
+
+## Architecture
+
+The system uses [Autobase](https://www.npmjs.com/package/autobase) to manage a distributed, eventually consistent state. Operations are appended to Autobase as JSON objects with the format:
+
+```javascript
+{
+  system: "identity", // or "permission", "currency", etc.
+  data: {
+    type: "REGISTER_DEVICE", // or other operation types
+    // operation-specific fields
+  },
+  timestamp: Date.now()
+}
+```
+
+These operations are applied to the in-memory state and can be replayed when the application restarts, ensuring consistent state across all nodes.
 
 ## License
 
