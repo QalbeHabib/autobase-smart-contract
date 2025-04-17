@@ -1,0 +1,24 @@
+{
+  "name": "autobase-smart-contracts",
+  "version": "1.0.0",
+  "description": "Smart contract-like functionality using Autobase",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start:chat": "node examples/chat/index.js",
+    "start:game": "node examples/game-currency/index.js"
+  },
+  "keywords": [
+    "autobase",
+    "hypercore",
+    "p2p",
+    "smart-contracts"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "autobase": "^7.5.0",
+    "b4a": "^1.6.0",
+    "corestore": "^7.4.0"
+  }
+}
